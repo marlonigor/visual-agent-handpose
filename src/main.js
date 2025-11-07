@@ -59,11 +59,7 @@ function gotPredictions(results){
 
 // --- Função de Draw do p5.js ---
 function draw() {
-    // Espelhamento
-    translate(width, 0);
-    scale(-1, 1);
-    image(video, 0, 0, width, height); // Desenha a imagem da webcam no canvas
-
+    
     if (predictions.length > 0){
         calculateMetrics(predictions[0]);
         updateCritic();
@@ -74,21 +70,29 @@ function draw() {
         agentState = "IDLE";
     }
 
+    push();
+
+    // Espelhamento
+    translate(width, 0);
+    scale(-1, 1);
+    image(video, 0, 0, width, height); // Desenha a imagem da webcam no canvas
 
     drawKeypoints();
 
     drawAgent();
+
+    pop();
 
     // STATUS
     fill(255); 
     noStroke();
     textSize(20);
 
-    if(predictions.length > 0){
-        text("Mão detectada!", width - 180, 30);
-    } else {
-        text("Procurando mão...", width - 200, 30);
-    }
+    // Mostra o estado que o "Crítico" definiu
+    text("Estado do Agente: " + agentState, 20, 40);
+    
+    // Mostra o que o "Elemento de Aprendizagem" está fazendo
+    text("Limiar de Pinça (Aprendido): " + pinchThreshold.toFixed(2), 20, 70);
 }
 
 // Desenha os 21 pontos da mão
