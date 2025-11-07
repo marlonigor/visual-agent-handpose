@@ -9,6 +9,10 @@ let predictions = []; // Armazena as detecções
 let prevHandX = 0; 
 let prevHandY = 0;
 
+// Crítico
+const PINCH_THRESHOLD = 60;
+const SPEED_THRESHOLD = 8;
+
 // Métricas
 let agentMetrics = {
     speed: 0,
@@ -17,6 +21,9 @@ let agentMetrics = {
     agentY: 0, // Posição Y do agente
     agentSize: 10 // Tamanho do agente
 };
+
+// Feedback
+let agentState = "IDLE"; //// IDLE (Ocioso), TRACKING (Rastreando), GRABBING (Agarrando)
 
 // --- Função de Setup do p5.js ---
 function setup() {
@@ -58,9 +65,11 @@ function draw() {
 
     if (predictions.length > 0){
         calculateMetrics(predictions[0]);
+        updateCritic();
     } else {
         prevHandX = 0;
         prevHandY = 0;
+        agentState = "IDLE";
     }
 
 
@@ -103,18 +112,27 @@ function drawKeypoints(){
     }
 }
 
+// Atuação
 function drawAgent(){
     
-    // O 'Elemento de Desempenho' (Agente) só atua se houver detecção
-    if (predictions.length > 0) {
+// O Agente (Elemento de Desempenho) só atua se não estiver Ocioso
+    if (agentState !== "IDLE") {
         
-        // Estilo
-        fill(0, 150, 255);
+        let agentColor;
+        
+        // O Agente REAGE ao feedback do Crítico
+        if (agentState === "GRABBING") {
+            agentColor = color(0, 255, 150); // Verde (Sucesso/Agarrado)
+        } else { // (agentState === "TRACKING")
+            agentColor = color(0, 150, 255); // Azul (Rastreando)
+        }
+        
+        // Atuação
+        fill(agentColor);
         noStroke();
         drawingContext.shadowBlur = 32;
-        drawingContext.shadowColor = color(0, 150, 255);
+        drawingContext.shadowColor = agentColor;
         
-        // Atuação: Desenha a elipse LENDO as métricas globais
         ellipse(
             agentMetrics.agentX, 
             agentMetrics.agentY, 
@@ -122,7 +140,6 @@ function drawAgent(){
             agentMetrics.agentSize
         );
         
-        // Reset
         drawingContext.shadowBlur = 0;
     }
 
@@ -158,4 +175,21 @@ function calculateMetrics(hand) {
     // Atualiza a posição anterior para o próximo frame
     prevHandX = indexX;
     prevHandY = indexY;
+}
+
+// O "CRÍTICO"
+// Avalia as métricas e define o 'agentState'.
+// Este 'agentState' é o feedback para os outros elementos.
+function updateCritic() {
+    
+    // Avaliação: A pinça está fechada E a mão está parada?
+    if (agentMetrics.pinchDist < PINCH_THRESHOLD && 
+        agentMetrics.speed < SPEED_THRESHOLD) 
+    {
+        // Feedback: "Sucesso! Agarrando."
+        agentState = "GRABBING";
+    } else {
+        // Feedback: "Rastreando..."
+        agentState = "TRACKING";
+    }
 }
