@@ -13,8 +13,7 @@ function setup() {
     // Configura a captura de vídeo (webcam)
     // Isso pedirá permissão ao usuário
     video = createCapture(VIDEO);
-    video.size(width, height); // Garante que o vídeo tenha o tamanho do canvas
-    
+
     // Inicializa o modelo Handpose
     // Passa o vídeo e a função 'modelReady' como callback
     handpose = ml5.handpose(video, modelReady);
