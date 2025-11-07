@@ -42,7 +42,13 @@ function gotPredictions(results){
 function draw() {
     // Define a cor de fundo (um cinza escuro)
     // O '20' no final é a opacidade (alfa), para criar um leve rastro
-    background(50, 20); 
+    background(50); 
+
+    // Espelhamento
+    translate(width, 0);
+    scale(-1, 1);
+
+    image(video, 0, 0, width, height); // Desenha a imagem da webcam no canvas
 
     // STATUS
     fill(255); 
@@ -50,8 +56,8 @@ function draw() {
     textSize(20);
 
     if(predictions.length > 0){
-        text("Mão detectada!", 20, 30);
+        text("Mão detectada!", width - 180, 30);
     } else {
-        text("Procurando mão...", 20, 30);
+        text("Procurando mão...", width - 200, 30);
     }
 }
