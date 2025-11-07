@@ -50,6 +50,8 @@ function draw() {
 
     image(video, 0, 0, width, height); // Desenha a imagem da webcam no canvas
 
+    drawKeypoints();
+
     // STATUS
     fill(255); 
     noStroke(); // Sem contorno
@@ -59,5 +61,22 @@ function draw() {
         text("Mão detectada!", width - 180, 30);
     } else {
         text("Procurando mão...", width - 200, 30);
+    }
+}
+
+// Desenha os 21 pontos da mão
+function drawKeypoints(){
+    for (let i = 0; i < predictions.length; i++){
+        const hand = predictions[i];
+
+        // Itera por todos os pontos (landmarks) da mão
+        for (let j = 0; j < hand.landmarks.length; j++){
+            const keypoint = hand.landmarks[j];
+
+            // Desenha um círculo verde em cada ponto
+            fill (0, 255, 0);
+            noStroke();
+            ellipse(keypoint[0], keypoint[1], 10, 10); // keypoint[0] = X, keypoint[1] = Y
+        }
     }
 }
