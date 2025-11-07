@@ -76,7 +76,13 @@ function drawKeypoints(){
             // Desenha um círculo verde em cada ponto
             fill (0, 255, 0);
             noStroke();
-            ellipse(keypoint[0], keypoint[1], 10, 10); // keypoint[0] = X, keypoint[1] = Y
+
+            // Aspect Ratio
+            const x = map (keypoint[0], 0, video.width, 0, width);
+
+            const y = map (keypoint[1], 0, video.height, 0, height);
+
+            ellipse (x, y, 10, 10); // keypoint[0] = X, keypoint[1] = Y
         }
     }
 }
