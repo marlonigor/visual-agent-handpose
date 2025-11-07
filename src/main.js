@@ -52,6 +52,9 @@ function draw() {
 
     drawKeypoints();
 
+    // Desenha o agente visual
+    drawAgent();
+
     // STATUS
     fill(255); 
     noStroke(); // Sem contorno
@@ -85,4 +88,33 @@ function drawKeypoints(){
             ellipse (x, y, 10, 10); // keypoint[0] = X, keypoint[1] = Y
         }
     }
+}
+
+function drawAgent(){
+    
+    // Só executa se houver uma mão
+    if (predictions.length > 0) {
+        const hand = predictions[0];
+        
+        // Pega o keypoint 8 (ponta do dedo indicador)
+        const indexFinger = hand.landmarks[8];
+        
+        // --- IMPORTANTE: Mapear as coordenadas ---
+        // Exatamente como fizemos no drawKeypoints()
+        const x = map(indexFinger[0], 0, video.width, 0, width);
+        const y = map(indexFinger[1], 0, video.height, 0, height);
+        
+        // Desenha o "agente" (uma esfera de luz azul)
+        fill(0, 150, 255); // Azul brilhante
+        noStroke();
+        // Adiciona um brilho sutil
+        drawingContext.shadowBlur = 32;
+        drawingContext.shadowColor = color(0, 150, 255);
+        
+        ellipse(x, y, 30, 30);
+        
+        // Reseta o brilho para não afetar outros elementos
+        drawingContext.shadowBlur = 0;
+    }
+
 }
