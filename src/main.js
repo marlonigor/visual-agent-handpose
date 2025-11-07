@@ -1,8 +1,11 @@
-// Variável global para armazenar a captura da webcam
+// Captura da webcam
 let video;
 
+// Handpose
+let handpose;
+let predictions = []; // Armazena as detecções
+
 // --- Função de Setup do p5.js ---
-// É executada uma única vez no início
 function setup() {
     // Cria o canvas com o tamanho total da janela
     createCanvas(windowWidth, windowHeight);
@@ -10,25 +13,45 @@ function setup() {
     // Configura a captura de vídeo (webcam)
     // Isso pedirá permissão ao usuário
     video = createCapture(VIDEO);
+    video.size(width, height); // Garante que o vídeo tenha o tamanho do canvas
     
-    // Esconde o elemento de vídeo extra que o createCapture cria,
-    // pois vamos desenhar os pixels no canvas manualmente.
+    // Inicializa o modelo Handpose
+    // Passa o vídeo e a função 'modelReady' como callback
+    handpose = ml5.handpose(video, modelReady);
+
+    // Define um ouvinte (listener)
+    // Sempre que o handpose detectar algo, ele chama a função 'gotPredictions'
+    handpose.on("predict", gotPredictions);
+
+    // Esconde o elemento de vídeo extra 
     video.hide();
     
-    console.log("Setup concluído: Canvas e Webcam prontos.");
+}
+
+// Callback: chamado quando o modelo Handpose está pronto
+function modelReady (){
+    console.log("Modelo Handpose Carregado!");
+}
+
+function gotPredictions(results){
+    // 'results' é um array de mãos detectadas
+    predictions = results;
 }
 
 // --- Função de Draw do p5.js ---
-// É executada continuamente em loop
 function draw() {
     // Define a cor de fundo (um cinza escuro)
     // O '20' no final é a opacidade (alfa), para criar um leve rastro
     background(50, 20); 
 
-    // --- AQUI VAI A LÓGICA DO AGENTE ---
-    // Por enquanto, vamos apenas desenhar um círculo onde o mouse está
-    
-    fill(255, 0, 0); // Cor de preenchimento: Vermelho
+    // STATUS
+    fill(255); 
     noStroke(); // Sem contorno
-    ellipse(mouseX, mouseY, 30, 30); // Desenha um círculo de 30px
+    textSize(20);
+
+    if(predictions.length > 0){
+        text("Mão detectada!", 20, 30);
+    } else {
+        text("Procurando mão...", 20, 30);
+    }
 }
