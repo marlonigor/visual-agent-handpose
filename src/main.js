@@ -96,22 +96,31 @@ function drawAgent(){
     if (predictions.length > 0) {
         const hand = predictions[0];
         
-        // Pega o keypoint 8 (ponta do dedo indicador)
-        const indexFinger = hand.landmarks[8];
+        const indexFinger = hand.landmarks[8]; // Indicador
+        const thumb = hand.landmarks[4]; // Polegar
         
-        // --- IMPORTANTE: Mapear as coordenadas ---
-        // Exatamente como fizemos no drawKeypoints()
-        const x = map(indexFinger[0], 0, video.width, 0, width);
-        const y = map(indexFinger[1], 0, video.height, 0, height);
-        
-        // Desenha o "agente" (uma esfera de luz azul)
-        fill(0, 150, 255); // Azul brilhante
+        // Mapeia as coordenadas
+        const indexX = map(indexFinger[0], 0, video.width, 0, width);
+        const indexY = map(indexFinger[1], 0, video.height, 0, height);
+        const thumbX = map(thumb[0], 0, video.width, 0, width);
+        const thumbY = map(thumb[1], 0, video.height, 0, height);
+
+        // Calcula a distância (o gesto)
+        let pinchDist = dist(indexX, indexY, thumbX, thumbY);
+
+        // Mapeia a distância para um caminho
+        let agentSize = map(pinchDist, 20, 200, 10, 60, true);
+
+        // Desenha o "agente"
+        fill(255, 255, 100); // Amarelo
         noStroke();
-        // Adiciona um brilho sutil
-        drawingContext.shadowBlur = 32;
-        drawingContext.shadowColor = color(0, 150, 255);
+
+        // Brilho
+        drawingContext.shadowBlur = 40;
+        drawingContext.shadowColor = color(255, 230, 80);
         
-        ellipse(x, y, 30, 30);
+        // Desenha no dedo indicador mas com o tamanho do gesto
+        ellipse(indexX, indexY, agentSize, agentSize);
         
         // Reseta o brilho para não afetar outros elementos
         drawingContext.shadowBlur = 0;
