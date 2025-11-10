@@ -39,17 +39,22 @@ let classificationResult = "Desenhe algo e clique em 'Classificar'";
 // --- Função de Setup do p5.js ---
 function setup() {
     // Cria o canvas com o tamanho total da janela
-    createCanvas(windowWidth, windowHeight);
+    createCanvas(1280, 960);
 
     px = 0;
     py = 0;
 
     // Inicia a tela de pintura
-    drawingCanvas = createGraphics(windowWidth, windowHeight);
+    drawingCanvas = createGraphics(1280, 960);
     drawingCanvas.clear();
     
     // Configura a captura de vídeo (webcam)
     video = createCapture(VIDEO);
+    video.size(1280, 960);
+
+    const options = {
+        flipped:true
+    }
 
     // Inicializa o modelo Handpose
     // Passa o vídeo e a função 'modelReady' como callback
@@ -183,8 +188,8 @@ function calculateMetrics(hand) {
     // --- ATUALIZA AS MÉTRICAS ---
 
     // Métrica 1: Posição 
-    agentMetrics.agentX = indexX;
-    agentMetrics.agentY = indexY;
+    agentMetrics.indexX = indexX;
+    agentMetrics.indexY = indexY;
     agentMetrics.thumbX = thumbX;
     agentMetrics.thumbY = thumbY;
     
