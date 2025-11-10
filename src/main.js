@@ -5,28 +5,25 @@ let video;
 let handpose;
 let predictions = []; // Armazena as detecções
 
-let smoothX = 0;
-let smoothY = 0;
-let prevSmoothX = 0;
-let prevSmoothY = 0;
-const SMOOTH_FACTOR = 0.2;
+
+// Lógica TCT
+let px = 0;
+let py = 0;
 
 // Crítico
 const PINCH_THRESHOLD = 45;
-const SPEED_THRESHOLD = 8;
 
 // Métricas
 let agentMetrics = {
-    speed: 0,
     pinchDist: 0,
-    agentX: 0, // Posição X do agente
-    agentY: 0, // Posição Y do agente
-    agentSize: 10 // Tamanho do agente
+    indexX: 0,
+    indexY: 0,
+    thumbX: 0,
+    thumbY: 0
 };
 
 // Feedback
 let agentState = "IDLE"; //// IDLE (Ocioso), TRACKING (Rastreando), GRABBING (Agarrando)
-let prevState = "IDLE";
 
 // Gerador de Problemas
 const problemList = ["Círculo", "Quadrado", "Triângulo", "Linha Horizontal"];
@@ -44,11 +41,8 @@ function setup() {
     // Cria o canvas com o tamanho total da janela
     createCanvas(windowWidth, windowHeight);
 
-    // Suavização do pincel
-    smoothX = 0;
-    smoothY = 0;
-    prevSmoothX = 0;
-    prevSmoothY = 0;
+    px = 0;
+    py = 0;
 
     // Inicia a tela de pintura
     drawingCanvas = createGraphics(windowWidth, windowHeight);
@@ -101,26 +95,21 @@ function draw() {
     
     if (predictions.length > 0){
         calculateMetrics(predictions[0]);
-        updateCritic();
 
-        smoothX = lerp(smoothX, agentMetrics.agentX, SMOOTH_FACTOR);
-        smoothY = lerp(smoothY, agentMetrics.agentY, SMOOTH_FACTOR);
+        let x = (agentMetrics.indexX + agentMetrics.thumbX) / 2;
+        let y = (agentMetrics.indexY + agentMetrics.thumbY) / 2;
 
-        if (agentState === "GRABBING"){
-
-            if (prevState === "GRABBING"){
-                drawBrush();
-            }
-            
+        if (agentMetrics.pinchDist < PINCH_THRESHOLD){
+            drawBrush(x, y, px, py);
         }
 
-        prevSmoothX = smoothX;
-        prevSmoothY = smoothY;
-        prevState = agentState;
+        px = x;
+        py = y;
 
     } else {
+        px = 0;
+        py = 0;
         agentState = "IDLE";
-        prevState = "IDLE";
     }
 
     push();
@@ -193,48 +182,30 @@ function calculateMetrics(hand) {
     
     // --- ATUALIZA AS MÉTRICAS ---
 
-    // Métrica 1: Posição do Agente
+    // Métrica 1: Posição 
     agentMetrics.agentX = indexX;
     agentMetrics.agentY = indexY;
+    agentMetrics.thumbX = thumbX;
+    agentMetrics.thumbY = thumbY;
     
     // Métrica 2: Distância da Pinça
     agentMetrics.pinchDist = dist(indexX, indexY, thumbX, thumbY);
-    
-    // Métrica 3: Tamanho do Agente (derivado da pinça)
-    agentMetrics.agentSize = map(agentMetrics.pinchDist, 20, 200, 10, 60, true);
-    
-    
+       
 }
-
-// O "CRÍTICO"
-// Avalia as métricas e define o 'agentState'.
-// Este 'agentState' é o feedback para os outros elementos.
-function updateCritic() {
-    
-    // Avalia a pinça
-    if (agentMetrics.pinchDist < PINCH_THRESHOLD) 
-    {
-        agentState = "GRABBING";
-    } else {
-        agentState = "TRACKING";
-    }
-}
-
-
 
 //Atuação
+function drawBrush(x, y, px, py) { // <-- CORREÇÃO 1: Aceita os argumentos
 
-function drawBrush(){
+    // CORREÇÃO 2: A lógica de "reset" agora checa por 0,
+    // (conforme definimos no 'setup')
+    if (px === 0 && py === 0){ 
+       return; // Não desenha a linha vinda de (0,0)
+    }
 
-    if (prevSmoothX === width / 2 && prevSmoothY === height / 2){
-        return;
-    }
-
-    drawingCanvas.stroke(0);
-    drawingCanvas.strokeWeight(10);
-    drawingCanvas.noFill();
-
-    drawingCanvas.line(x, y, px, py);
+    drawingCanvas.stroke(0);
+    drawingCanvas.strokeWeight(10);
+    drawingCanvas.noFill();
+    drawingCanvas.line(x, y, px, py);
 }
 
 // Limpa o canvas de desenho
