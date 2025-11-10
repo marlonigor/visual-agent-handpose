@@ -26,8 +26,16 @@ let agentMetrics = {
 let agentState = "IDLE"; //// IDLE (Ocioso), TRACKING (Rastreando), GRABBING (Agarrando)
 let prevState = "IDLE";
 
+// Gerador de Problemas
+const problemList = ["Círculo", "Quadrado", "Triângulo", "Linha Horizontal"];
+let currentProblem = "";
+
 // Tela de Pintura
 let drawingCanvas;
+
+let sketchClassifier;
+
+let classificationResult = "Desenhe algo e clique em 'Classificar'";
 
 // --- Função de Setup do p5.js ---
 function setup() {
@@ -43,7 +51,9 @@ function setup() {
 
     // Inicializa o modelo Handpose
     // Passa o vídeo e a função 'modelReady' como callback
-    handpose = ml5.handpose(video, modelReady);
+    handpose = ml5.handpose(video, handposeModelReady);
+
+    sketchClassifier = ml5.imageClassifier('DoodleNet', classifierModelReady);
 
     // Define um ouvinte (listener)
     // Sempre que o handpose detectar algo, ele chama a função 'gotPredictions'
@@ -53,14 +63,22 @@ function setup() {
     video.hide();
 
     const clearBtn = select('#clearButton')
-
     clearBtn.mousePressed(clearDrawing);
+
+    const classifyBtn = select('#btnClassify');
+    classifyBtn.mousePressed(classifyDrawing);
+
+    generateNewProblem();
     
 }
 
 // Callback: chamado quando o modelo Handpose está pronto
-function modelReady (){
+function handposeModelReady (){
     console.log("Modelo Handpose Carregado!");
+}
+
+function classifierModelReady(){
+    console.log("Modelo DoodleNet Carregado!");
 }
 
 function gotPredictions(results){
@@ -78,6 +96,7 @@ function draw() {
         updateCritic();
 
         if (agentState === "GRABBING"){
+
             if (prevState === "GRABBING"){
                 drawBrush();
             }
@@ -111,14 +130,20 @@ function draw() {
     // STATUS
     fill(255); 
     noStroke();
-    textSize(20);
+    textSize(18);
 
-    // Mostra o estado que o "Crítico" definiu
+    // Definições do Crítico
     text("Estado do Agente: " + agentState, 20, 40);
-
     let distText = (predictions.length > 0) ? agentMetrics.pinchDist.toFixed(2) : "N/A";
     text("Distância Atual: " + distText, 20, 70);
     text("Limiar (Fixo) " + PINCH_THRESHOLD, 20, 100);
+
+    // Resultados
+    fill(255, 255, 0);
+    textSize(24);
+    textAlign(CENTER);
+    text(classificationResult, width / 2, 40);
+    textAlign(LEFT);
     
 }
 
@@ -213,5 +238,35 @@ function drawBrush(){
 // Limpa o canvas de desenho
 function clearDrawing(){
     drawingCanvas.clear();
-    console.log("Canvas cleaned!");
+    classificationResult = "Desenhe algo e clique em 'Classificar'"; // Reseta o texto
+    console.log("Canvas and Data cleaned!");
+}
+
+// A função geradora de problemas
+function generateNewProblem(){
+    currentProblem = random(problemList);
+
+    console.log("Novo Problema Gerado: ", currentProblem);
+}
+
+// Função classificar
+function classifyDrawing(){
+    classificationResult = "Analisando...";
+
+    sketchClassifier.classify(drawingCanvas, gotResults);
+}
+
+// Callback com os resultados
+function gotResults(error, results){
+    if (error){
+        console.error(error);
+        classificationResult = "Erro ao classificar.";
+        return;
+    }
+
+    let label = results[0].label;
+    let confidence = nf(results[0].confidence * 100, 2, 1);
+
+    classificationResult = `Isso é um (a) ${label} (${confidence}%)`;
+    console.log(results);
 }
