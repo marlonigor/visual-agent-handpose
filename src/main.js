@@ -5,9 +5,11 @@ let video;
 let handpose;
 let predictions = []; // Armazena as detecções
 
-// Variáveis para calcular a velocidade
-let prevHandX = 0; 
-let prevHandY = 0;
+let smoothX = 0;
+let smoothY = 0;
+let prevSmoothX = 0;
+let prevSmoothY = 0;
+const SMOOTH_FACTOR = 0.2;
 
 // Crítico
 const PINCH_THRESHOLD = 45;
@@ -41,6 +43,12 @@ let classificationResult = "Desenhe algo e clique em 'Classificar'";
 function setup() {
     // Cria o canvas com o tamanho total da janela
     createCanvas(windowWidth, windowHeight);
+
+    // Suavização do pincel
+    smoothX = 0;
+    smoothY = 0;
+    prevSmoothX = 0;
+    prevSmoothY = 0;
 
     // Inicia a tela de pintura
     drawingCanvas = createGraphics(windowWidth, windowHeight);
@@ -89,11 +97,14 @@ function gotPredictions(results){
 // --- Função de Draw do p5.js ---
 function draw() {
 
-    background(50);
+    background(220);
     
     if (predictions.length > 0){
         calculateMetrics(predictions[0]);
         updateCritic();
+
+        smoothX = lerp(smoothX, agentMetrics.agentX, SMOOTH_FACTOR);
+        smoothY = lerp(smoothY, agentMetrics.agentY, SMOOTH_FACTOR);
 
         if (agentState === "GRABBING"){
 
@@ -103,13 +114,11 @@ function draw() {
             
         }
 
-        prevHandX = agentMetrics.agentX;
-        prevHandY = agentMetrics.agentY;
+        prevSmoothX = smoothX;
+        prevSmoothY = smoothY;
         prevState = agentState;
 
     } else {
-        prevHandX = 0;
-        prevHandY = 0;
         agentState = "IDLE";
         prevState = "IDLE";
     }
@@ -194,9 +203,7 @@ function calculateMetrics(hand) {
     // Métrica 3: Tamanho do Agente (derivado da pinça)
     agentMetrics.agentSize = map(agentMetrics.pinchDist, 20, 200, 10, 60, true);
     
-    // Métrica 4: Velocidade (baseada no dedo indicador)
-    agentMetrics.speed = dist(indexX, indexY, prevHandX, prevHandY);
-
+    
 }
 
 // O "CRÍTICO"
@@ -219,20 +226,15 @@ function updateCritic() {
 
 function drawBrush(){
 
-    if (prevHandX === 0 || prevHandY === 0){
+    if (prevSmoothX === width / 2 && prevSmoothY === height / 2){
         return;
     }
 
-    drawingCanvas.stroke(255);
+    drawingCanvas.stroke(0);
     drawingCanvas.strokeWeight(10);
     drawingCanvas.noFill();
 
-    drawingCanvas.line(
-        agentMetrics.agentX,
-        agentMetrics.agentY,
-        prevHandX,
-        prevHandY
-    );
+    drawingCanvas.line(x, y, px, py);
 }
 
 // Limpa o canvas de desenho
@@ -253,7 +255,16 @@ function generateNewProblem(){
 function classifyDrawing(){
     classificationResult = "Analisando...";
 
-    sketchClassifier.classify(drawingCanvas, gotResults);
+    const tempGfx = createGraphics(drawingCanvas.width, drawingCanvas.height);
+
+    tempGfx.background(255);
+
+    tempGfx.image(drawingCanvas, 0, 0);
+
+    sketchClassifier.classify(tempGfx, gotResults);
+
+    tempGfx.remove();
+
 }
 
 // Callback com os resultados
