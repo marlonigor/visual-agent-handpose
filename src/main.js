@@ -26,10 +26,17 @@ let agentMetrics = {
 // Feedback
 let agentState = "IDLE"; //// IDLE (Ocioso), TRACKING (Rastreando), GRABBING (Agarrando)
 
+// Tela de Pintura
+let drawingCanvas;
+
 // --- Função de Setup do p5.js ---
 function setup() {
     // Cria o canvas com o tamanho total da janela
     createCanvas(windowWidth, windowHeight);
+
+    // Inicia a tela de pintura
+    drawingCanvas = createGraphics(windowWidth, windowHeight);
+    drawingCanvas.clear();
     
     // Configura a captura de vídeo (webcam)
     video = createCapture(VIDEO);
@@ -59,11 +66,18 @@ function gotPredictions(results){
 
 // --- Função de Draw do p5.js ---
 function draw() {
+
+    background(50);
     
     if (predictions.length > 0){
         calculateMetrics(predictions[0]);
         updateCritic();
         updateLearningElement();
+
+        if (agentState === "GRABBING"){
+            drawBrush();
+        }
+
     } else {
         prevHandX = 0;
         prevHandY = 0;
@@ -79,7 +93,7 @@ function draw() {
 
     drawKeypoints();
 
-    drawAgent();
+    image(drawingCanvas, 0, 0);
 
     pop();
 
@@ -116,39 +130,6 @@ function drawKeypoints(){
             ellipse (x, y, 10, 10); // keypoint[0] = X, keypoint[1] = Y
         }
     }
-}
-
-// Atuação
-function drawAgent(){
-    
-// O Agente (Elemento de Desempenho) só atua se não estiver Ocioso
-    if (agentState !== "IDLE") {
-        
-        let agentColor;
-        
-        // O Agente REAGE ao feedback do Crítico
-        if (agentState === "GRABBING") {
-            agentColor = color(0, 255, 150); // Verde (Sucesso/Agarrado)
-        } else { // (agentState === "TRACKING")
-            agentColor = color(0, 150, 255); // Azul (Rastreando)
-        }
-        
-        // Atuação
-        fill(agentColor);
-        noStroke();
-        drawingContext.shadowBlur = 32;
-        drawingContext.shadowColor = agentColor;
-        
-        ellipse(
-            agentMetrics.agentX, 
-            agentMetrics.agentY, 
-            agentMetrics.agentSize, 
-            agentMetrics.agentSize
-        );
-        
-        drawingContext.shadowBlur = 0;
-    }
-
 }
 
 // Percepção
@@ -218,4 +199,19 @@ function updateLearningElement() {
         
        
     }
+}
+
+//Atuação
+
+function drawBrush(){
+    drawingCanvas.stroke(255);
+    drawingCanvas.strokeWeight(10);
+    drawingCanvas.noFill();
+
+    drawingCanvas.line(
+        agentMetrics.agentX,
+        agentMetrics.agentY,
+        prevHandX,
+        prevHandY
+    );
 }
