@@ -24,6 +24,7 @@ let agentMetrics = {
 
 // Feedback
 let agentState = "IDLE"; //// IDLE (Ocioso), TRACKING (Rastreando), GRABBING (Agarrando)
+let prevState = "IDLE";
 
 // Tela de Pintura
 let drawingCanvas;
@@ -77,16 +78,21 @@ function draw() {
         updateCritic();
 
         if (agentState === "GRABBING"){
-            drawBrush();
+            if (prevState === "GRABBING"){
+                drawBrush();
+            }
+            
         }
 
         prevHandX = agentMetrics.agentX;
         prevHandY = agentMetrics.agentY;
+        prevState = agentState;
 
     } else {
         prevHandX = 0;
         prevHandY = 0;
         agentState = "IDLE";
+        prevState = "IDLE";
     }
 
     push();
