@@ -51,6 +51,10 @@ function setup() {
 
     // Esconde o elemento de vídeo extra 
     video.hide();
+
+    const clearBtn = select('#clearButton')
+
+    clearBtn.mousePressed(clearDrawing);
     
 }
 
@@ -214,4 +218,10 @@ function drawBrush(){
         prevHandX,
         prevHandY
     );
+}
+
+// Limpa o canvas de desenho
+function clearDrawing(){
+    drawingCanvas.clear();
+    console.log("Canvas cleaned!");
 }

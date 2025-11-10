@@ -14,9 +14,30 @@
             padding: 0;
             overflow: hidden; 
         }
+
+        #ui-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+        }
+
+        #clearButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            opacity: 0.7;
+            border: none;
+            border-radius: 5px;
+        }
+
     </style>
 </head>
 <body>
+    <div id = "ui-controls">
+        <button id="clearButton">Clear Canvas</button>
+    </div>
+
     <script src="src/main.js"></script>
 </body>
 </html>
