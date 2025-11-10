@@ -25,7 +25,9 @@ let classificationResult = "Desenhe algo e clique em 'Classificar'";
 // --- Função de Setup do p5.js ---
 function setup() {
 // Trava o canvas no tamanho do TCT
-    createCanvas(1280, 960);
+    createCanvas(windowWidth, windowHeight);
+    px = 0;
+    py = 0;
 
     // Inicia a tela de pintura (lógica TCT)
     painting = createGraphics(1280, 960);
@@ -33,7 +35,7 @@ function setup() {
     
     // Configura a captura de vídeo (lógica TCT)
     video = createCapture({ video: true, audio: false });
-    //video.size(1280, 960);
+    video.size(1280, 960);
     video.hide();
 
     // Inicia a detecção (lógica TCT)
@@ -69,55 +71,52 @@ function gotHands(results){
 function draw() {
     background(220); // Fundo claro
 
-    push();
-    translate(width, 0);
-    scale(-1, 1);
+    // 1. Desenha o vídeo (estica para o canvas, SEM espelho)
+    image(video, 0, 0, width, height); 
 
-    // 1. Desenha o vídeo espelhado (lógica TCT)
-    image(video, 0, 0, width, height);
-
-    // 2. Lógica de Desenho TCT (adaptada para nossa sintaxe)
+    // 2. Lógica de Desenho
     if (hands.length > 0) {
         let hand = hands[0];
-        // (A TCT usa 'index_finger_tip', mas nosso ML5 CDN (0.12.2) usa 'landmarks')
         let index = hand.landmarks[8];
         let thumb = hand.landmarks[4];
 
-        // Ponto médio (lógica TCT)
-        let x = (index[0] + thumb[0]) / 2;
-        let y = (index[1] + thumb[1]) / 2;
+        // --- USA MAP() PARA TRADUZIR COORDS ---
+        // (video.width/height = tamanho nativo da webcam)
+        // (width/height = tamanho do canvas)
+        let indexX = map(index[0], 0, video.width, 0, width);
+        let indexY = map(index[1], 0, video.height, 0, height);
+        let thumbX = map(thumb[0], 0, video.width, 0, width);
+        let thumbY = map(thumb[1], 0, video.height, 0, height);
+        // --- FIM DO MAP ---
 
-        // Distância (lógica TCT)
-        pinchDist = dist(index[0], index[1], thumb[0], thumb[1]);
+        // Ponto médio (agora com coords mapeadas)
+        let x = (indexX + thumbX) / 2;
+        let y = (indexY + thumbY) / 2;
 
-        // Crítico (lógica TCT + nosso limiar)
+        pinchDist = dist(indexX, indexY, thumbX, thumbY);
+
         if (pinchDist < PINCH_THRESHOLD) {
             agentState = "GRABBING";
             drawBrush(x, y, px, py);
         } else {
             agentState = "TRACKING";
         }
-
-        // Atualiza o anterior (lógica TCT)
         px = x;
         py = y;
-
     } else {
         px = 0;
         py = 0;
         agentState = "IDLE";
     }
 
-    // 3. Desenha a pintura por cima (lógica TCT)
+    // 3. Desenha a pintura por cima
     image(painting, 0, 0);
 
-    // 4. Desenha os Keypoints (agora sem 'map()')
+    // 4. Desenha os Keypoints (com 'map()')
     drawKeypoints();
 
-    pop();
-
-    // 5. STATUS (Nosso código, agora lendo as globais simples)
-    fill(0); // Preto (para o fundo claro)
+    // 5. STATUS (sempre por último)
+    fill(0); 
     noStroke();
     textSize(18);
 
@@ -136,13 +135,19 @@ function draw() {
 
 // Desenha os 21 pontos da mão
 function drawKeypoints(){
-    for (let i = 0; i < hands.length; i++) { // Usa 'hands'
+    for (let i = 0; i < hands.length; i++) {
         const hand = hands[i];
         for (let j = 0; j < hand.landmarks.length; j++) {
             const keypoint = hand.landmarks[j];
             fill(0, 255, 0);
             noStroke();
-            ellipse(keypoint[0], keypoint[1], 10, 10); // Sem 'map'
+            
+            // === USA MAP() ===
+            // Traduz o X do vídeo para o X do canvas
+            const x = map(keypoint[0], 0, video.width, 0, width);
+            // Traduz o Y do vídeo para o Y do canvas
+            const y = map(keypoint[1], 0, video.height, 0, height);
+            ellipse(x, y, 10, 10);
         }
     }
 }
