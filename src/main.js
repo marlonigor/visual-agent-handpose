@@ -10,9 +10,8 @@ let prevHandX = 0;
 let prevHandY = 0;
 
 // Crítico
-let pinchThreshold = 60; // AGORA É 'let', pois vai 'aprender'
+const PINCH_THRESHOLD = 45;
 const SPEED_THRESHOLD = 8;
-const LEARNING_RATE = 0.05;
 
 // Métricas
 let agentMetrics = {
@@ -76,11 +75,13 @@ function draw() {
     if (predictions.length > 0){
         calculateMetrics(predictions[0]);
         updateCritic();
-        updateLearningElement();
 
         if (agentState === "GRABBING"){
             drawBrush();
         }
+
+        prevHandX = agentMetrics.agentX;
+        prevHandY = agentMetrics.agentY;
 
     } else {
         prevHandX = 0;
@@ -108,9 +109,11 @@ function draw() {
 
     // Mostra o estado que o "Crítico" definiu
     text("Estado do Agente: " + agentState, 20, 40);
+
+    let distText = (predictions.length > 0) ? agentMetrics.pinchDist.toFixed(2) : "N/A";
+    text("Distância Atual: " + distText, 20, 70);
+    text("Limiar (Fixo) " + PINCH_THRESHOLD, 20, 100);
     
-    // Mostra o que o "Elemento de Aprendizagem" está fazendo
-    text("Limiar de Pinça (Aprendido): " + pinchThreshold.toFixed(2), 20, 70);
 }
 
 // Desenha os 21 pontos da mão
@@ -162,10 +165,7 @@ function calculateMetrics(hand) {
     
     // Métrica 4: Velocidade (baseada no dedo indicador)
     agentMetrics.speed = dist(indexX, indexY, prevHandX, prevHandY);
-    
-    // Atualiza a posição anterior para o próximo frame
-    prevHandX = indexX;
-    prevHandY = indexY;
+
 }
 
 // O "CRÍTICO"
@@ -173,9 +173,8 @@ function calculateMetrics(hand) {
 // Este 'agentState' é o feedback para os outros elementos.
 function updateCritic() {
     
-    // Avaliação: Usa o limiar 'aprendido'
-    if (agentMetrics.pinchDist < pinchThreshold && // <-- Variável atualizada
-        agentMetrics.speed < SPEED_THRESHOLD) 
+    // Avalia a pinça
+    if (agentMetrics.pinchDist < PINCH_THRESHOLD) 
     {
         agentState = "GRABBING";
     } else {
@@ -183,31 +182,16 @@ function updateCritic() {
     }
 }
 
-// APRENDIZAGEM
-// Ajusta o 'pinchThreshold' com base no feedback do Crítico.
-function updateLearningElement() {
-    
-    // Se "GRABBING"
-    if (agentState === "GRABBING") {
-        
-        // O agente aprende que a distância *atual* da pinça é um bom
-        // exemplo de "pinça fechada".
-        
-        // Usamos lerp() para mover suavemente nosso limiar
-        // em direção a essa nova medição.
-        pinchThreshold = lerp(
-            pinchThreshold,          // Valor antigo
-            agentMetrics.pinchDist,  // Valor alvo (o novo exemplo)
-            LEARNING_RATE            // Taxa de aprendizado
-        );
-        
-       
-    }
-}
+
 
 //Atuação
 
 function drawBrush(){
+
+    if (prevHandX === 0 || prevHandY === 0){
+        return;
+    }
+
     drawingCanvas.stroke(255);
     drawingCanvas.strokeWeight(10);
     drawingCanvas.noFill();
