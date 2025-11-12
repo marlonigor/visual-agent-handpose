@@ -3,8 +3,7 @@ let video;
 
 // Handpose
 let handpose;
-let hands = []; // Armazena as detecções
-
+let hands = [];
 
 // Lógica TCT
 let painting;
@@ -16,80 +15,96 @@ const PINCH_THRESHOLD = 45;
 
 // Feedback
 let pinchDist = 0;
-let agentState = "IDLE"; //// IDLE (Ocioso), TRACKING (Rastreando), GRABBING (Agarrando)
+let agentState = "IDLE";
 
 // Tela de Pintura
 let sketchClassifier;
 let classificationResult = "Desenhe algo e clique em 'Classificar'";
 
-// --- Função de Setup do p5.js ---
+// --- NOVO: Variáveis de escala e offset ---
+let scaleFactor, offsetX, offsetY;
+
 function setup() {
-// Trava o canvas no tamanho do TCT
     createCanvas(windowWidth, windowHeight);
     px = 0;
     py = 0;
 
-    // Inicia a tela de pintura (lógica TCT)
+    // Tela de pintura
     painting = createGraphics(1280, 960);
     painting.clear();
-    
-    // Configura a captura de vídeo (lógica TCT)
+
+    // Webcam
     video = createCapture({ video: true, audio: false });
     video.size(1280, 960);
     video.hide();
 
-    // Inicia a detecção (lógica TCT)
-    handpose = ml5.handpose(video, handposeModelReady);
-
+    // Handpose
+    handpose = ml5.handpose(video, { flipHorizontal: false }, handposeModelReady);
     handpose.on("predict", gotHands);
 
+    // DoodleNet
     sketchClassifier = ml5.imageClassifier('DoodleNet', classifierModelReady);
 
+    // Botões
     const clearBtn = select('#clearButton');
-    clearBtn.mousePressed(clearDrawing);
+    if (clearBtn) clearBtn.mousePressed(clearDrawing);
 
     const classifyBtn = select('#btnClassify');
-    classifyBtn.mousePressed(classifyDrawing);
-    
+    if (classifyBtn) classifyBtn.mousePressed(classifyDrawing);
 }
 
-// Callback: chamado quando o modelo Handpose está pronto
-function handposeModelReady (){
+function handposeModelReady() {
     console.log("Modelo Handpose Carregado!");
 }
 
-function classifierModelReady(){
+function classifierModelReady() {
     console.log("Modelo DoodleNet Carregado!");
 }
 
-function gotHands(results){
-    // 'results' é um array de mãos detectadas
+function gotHands(results) {
     hands = results;
 }
 
-// --- Função de Draw do p5.js ---
+function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+}
+
 function draw() {
-    background(220); // Fundo claro
+    background(220);
 
-    // 1. Desenha o vídeo (estica para o canvas, SEM espelho)
-    image(video, 0, 0, width, height); 
+    // === 1. CALCULA ESCALA E OFFSET DO VÍDEO NA TELA ===
+    let videoW = video.width;
+    let videoH = video.height;
+    let displayW = width;
+    let displayH = height;
 
-    // 2. Lógica de Desenho
+    scaleFactor = Math.min(displayW / videoW, displayH / videoH);
+    let scaledW = videoW * scaleFactor;
+    let scaledH = videoH * scaleFactor;
+    offsetX = (displayW - scaledW) / 2;
+    offsetY = (displayH - scaledH) / 2;
+
+    // === 2. DESENHA O VÍDEO (centralizado, com letterbox) ===
+    push();
+    imageMode(CORNER);
+    image(video, offsetX, offsetY, scaledW, scaledH);
+    pop();
+
+    // === 3. LÓGICA DE DETECÇÃO E DESENHO ===
     if (hands.length > 0) {
         let hand = hands[0];
-        let index = hand.landmarks[8];
-        let thumb = hand.landmarks[4];
+        let index = hand.landmarks[8];  // Ponta do indicador
+        let thumb = hand.landmarks[4];  // Ponta do polegar
 
-        // --- USA MAP() PARA TRADUZIR COORDS ---
-        // (video.width/height = tamanho nativo da webcam)
-        // (width/height = tamanho do canvas)
-        let indexX = map(index[0], 0, video.width, 0, width);
-        let indexY = map(index[1], 0, video.height, 0, height);
-        let thumbX = map(thumb[0], 0, video.width, 0, width);
-        let thumbY = map(thumb[1], 0, video.height, 0, height);
-        // --- FIM DO MAP ---
+        // Mapeia com escala e offset
+        let idx = mapHandPoint(index[0], index[1]);
+        let thb = mapHandPoint(thumb[0], thumb[1]);
 
-        // Ponto médio (agora com coords mapeadas)
+        let indexX = idx.x;
+        let indexY = idx.y;
+        let thumbX = thb.x;
+        let thumbY = thb.y;
+
         let x = (indexX + thumbX) / 2;
         let y = (indexY + thumbY) / 2;
 
@@ -101,6 +116,7 @@ function draw() {
         } else {
             agentState = "TRACKING";
         }
+
         px = x;
         py = y;
     } else {
@@ -109,87 +125,87 @@ function draw() {
         agentState = "IDLE";
     }
 
-    // 3. Desenha a pintura por cima
-    image(painting, 0, 0);
+    // === 4. DESENHA A PINTURA POR CIMA ===
+    image(painting, 0, 0, width, height);
 
-    // 4. Desenha os Keypoints (com 'map()')
+    // === 5. DESENHA OS KEYPOINTS ===
     drawKeypoints();
 
-    // 5. STATUS (sempre por último)
-    fill(0); 
+    // === 6. UI DE STATUS ===
+    fill(0);
     noStroke();
     textSize(18);
+    text("Estado: " + agentState, 20, 40);
+    text("Distância: " + (hands.length > 0 ? pinchDist.toFixed(1) : "N/A"), 20, 70);
+    text("Limiar: " + PINCH_THRESHOLD, 20, 100);
 
-    text("Estado do Agente: " + agentState, 20, 40);
-    let distText = (hands.length > 0) ? pinchDist.toFixed(2) : "N/A";
-    text("Distância Atual: " + distText, 20, 70);
-    text("Limiar (Fixo) " + PINCH_THRESHOLD, 20, 100);
-
-    // Resultados
-    fill(255, 0, 0); // Vermelho
+    // Resultado da classificação
+    fill(255, 0, 0);
     textSize(24);
-    textAlign(CENTER);
+    textAlign(CENTER, CENTER);
     text(classificationResult, width / 2, 40);
     textAlign(LEFT);
 }
 
-// Desenha os 21 pontos da mão
-function drawKeypoints(){
+// === FUNÇÃO AUXILIAR: MAPEIA PONTO DA MÃO COM ESCALA E OFFSET ===
+function mapHandPoint(x_raw, y_raw) {
+    let x = x_raw * scaleFactor + offsetX;
+    let y = y_raw * scaleFactor + offsetY;
+    return { x, y };
+}
+
+// === DESENHA OS 21 PONTOS DA MÃO ===
+function drawKeypoints() {
     for (let i = 0; i < hands.length; i++) {
         const hand = hands[i];
         for (let j = 0; j < hand.landmarks.length; j++) {
-            const keypoint = hand.landmarks[j];
+            const kp = hand.landmarks[j];
+            const p = mapHandPoint(kp[0], kp[1]);
+
             fill(0, 255, 0);
             noStroke();
-            
-            // === USA MAP() ===
-            // Traduz o X do vídeo para o X do canvas
-            const x = map(keypoint[0], 0, video.width, 0, width);
-            // Traduz o Y do vídeo para o Y do canvas
-            const y = map(keypoint[1], 0, video.height, 0, height);
-            ellipse(x, y, 10, 10);
+            ellipse(p.x, p.y, 12, 12);
         }
     }
 }
 
-//Atuação
-function drawBrush(x, y, px, py) { // <-- CORREÇÃO 1: Aceita os argumentos
-    if (px === 0 && py === 0) { return; }
-        painting.stroke(0); // Pincel preto
-        painting.strokeWeight(10);
-        painting.noFill();
-        painting.line(x, y, px, py);
+// === DESENHA A LINHA DO PINCEL ===
+function drawBrush(x, y, px, py) {
+    if (px === 0 && py === 0) return;
+
+    painting.stroke(0);
+    painting.strokeWeight(10);
+    painting.line(x, y, px, py);
 }
 
-// Limpa o canvas de desenho
-function clearDrawing(){
+// === LIMPA O DESENHO ===
+function clearDrawing() {
     painting.clear();
-    classificationResult = "Desenhe algo e clique em 'Classificar'"; // Reseta o texto
-    console.log("Canvas and Data cleaned!");
+    classificationResult = "Desenhe algo e clique em 'Classificar'";
+    console.log("Desenho limpo!");
 }
 
-// Função classificar
-function classifyDrawing(){
+// === CLASSIFICA O DESENHO ===
+function classifyDrawing() {
+    if (painting.width === 0) return;
+
     classificationResult = "Analisando...";
-    const tempGfx = createGraphics(painting.width, painting.height);
+
+    const tempGfx = createGraphics(256, 256);
     tempGfx.background(255);
-    tempGfx.image(painting, 0, 0);
+    tempGfx.image(painting, 0, 0, 256, 256);
     sketchClassifier.classify(tempGfx, gotResults);
     tempGfx.remove();
-
 }
 
-// Callback com os resultados
-function gotResults(error, results){
-    if (error){
+function gotResults(error, results) {
+    if (error) {
         console.error(error);
         classificationResult = "Erro ao classificar.";
         return;
     }
 
     let label = results[0].label;
-    let confidence = nf(results[0].confidence * 100, 2, 1);
-
-    classificationResult = `Isso é um (a) ${label} (${confidence}%)`;
-    console.log(results);
+    let confidence = (results[0].confidence * 100).toFixed(1);
+    classificationResult = `${label} (${confidence}%)`;
 }
